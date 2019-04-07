@@ -65,7 +65,6 @@ type LoggerConfig struct {
 }
 
 var (
-	lastDateTimeStr string
 	lastTime        uint32
 	lastDate        uint32
 	deviceMap       = map[string]func(string) Device{
@@ -272,7 +271,6 @@ func updateNow() {
 	tm := uint32(t.Hour()*10000 + t.Minute()*100 + t.Second())
 	atomic.StoreUint32(&lastDate, dt)
 	atomic.StoreUint32(&lastTime, tm)
-	lastDateTimeStr = t.Format("2006-01-02 15:04:05.000")
 }
 
 // Flush 刷新日志
