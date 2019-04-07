@@ -75,7 +75,7 @@ func getLevelStr2(level int) string {
 func (format *DefaultFormatter) Format(level int, msg string) *bytes.Buffer {
 	buff := buffs.get()
 	t := time.Now()
-	dateTimeStr = t.Format("2006-01-02 15:04:05.000")
+	dateTimeStr := t.Format("2006-01-02 15:04:05.000")
 	buff.WriteString(dateTimeStr)
 	buff.WriteString(" ")
 	buff.WriteString(getLevelStr2(level))
