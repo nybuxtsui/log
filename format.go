@@ -52,11 +52,30 @@ func getLevelStr(level int) byte {
 	}
 }
 
+func getLevelStr2(level int) string {
+	switch level {
+	case DEBUG:
+		return "DEBUG"
+	case INFO:
+		return "INFO"
+	case WARN:
+		return "WARN"
+	case ERROR:
+		return "ERROR"
+	case FATAL:
+		return "FATAL"
+	default:
+		fmt.Printf("ERROR: logger level unknown: %v\n", level)
+		return "INFO"
+	}
+}
+
 // Format 格式化
 func (format *DefaultFormatter) Format(level int, msg string) *bytes.Buffer {
 	buff := buffs.get()
-	buff.WriteByte(getLevelStr(level))
 	buff.WriteString(lastDateTimeStr)
+	buff.WriteString(" ")
+	buff.WriteString(getLevelStr2(level))
 	_, file, line, ok := runtime.Caller(3)
 	if ok {
 		buff.WriteByte(' ')
