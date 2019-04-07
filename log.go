@@ -272,7 +272,7 @@ func updateNow() {
 	tm := uint32(t.Hour()*10000 + t.Minute()*100 + t.Second())
 	atomic.StoreUint32(&lastDate, dt)
 	atomic.StoreUint32(&lastTime, tm)
-	lastDateTimeStr = fmt.Sprintf("%04d %06d", dt%10000, tm)
+	lastDateTimeStr = t.Format("2006-01-02 15:04:05.999")
 }
 
 // Flush 刷新日志
