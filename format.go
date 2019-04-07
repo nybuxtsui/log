@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 )
 
 type buffPool struct {
@@ -73,7 +74,9 @@ func getLevelStr2(level int) string {
 // Format 格式化
 func (format *DefaultFormatter) Format(level int, msg string) *bytes.Buffer {
 	buff := buffs.get()
-	buff.WriteString(lastDateTimeStr)
+	t := time.Now()
+	dateTimeStr = t.Format("2006-01-02 15:04:05.000")
+	buff.WriteString(dateTimeStr)
 	buff.WriteString(" ")
 	buff.WriteString(getLevelStr2(level))
 	_, file, line, ok := runtime.Caller(3)
