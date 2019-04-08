@@ -3,6 +3,7 @@ package log
 import (
 	"bufio"
 	"fmt"
+	"path"
 	"os"
 	"strings"
 	"sync"
@@ -51,6 +52,10 @@ func (file *FileDevice) Write(p []byte) {
 	}
 	if file.file == nil {
 		filename := fmt.Sprintf("%s-%v.log", file.prefix, date)
+		dir := path.Dir(filename)
+		if _, err := os.Stat(dir); os.IsNotExist(err) {
+			os.MkdirAll(dir, os.ModePerm)
+		}
 		file.file, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
 			file.lock.Unlock()
