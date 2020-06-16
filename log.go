@@ -65,24 +65,27 @@ type LoggerConfig struct {
 }
 
 var (
-	lastTime        uint32
-	lastDate        uint32
-	deviceMap       = map[string]func(string) Device{
+	lastTime  uint32
+	lastDate  uint32
+	deviceMap = map[string]func(string) Device{
 		"file":    createFileDevice,
 		"stdout":  createStdoutDevice,
 		"console": createConsoleDevice,
 	}
-	defaultLogger = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
-	loggerMap     = map[string]*Logger{}
+
+	// defaultLogger = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
+	loggerMap = map[string]*Logger{}
+
 	// ErrNameNotFound 日志名称没找到
 	ErrNameNotFound = errors.New("name_not_found")
 	// ErrIndexOutOfBound 日志索引没找到
-	ErrIndexOutOfBound       = errors.New("index_out_of_bound")
-	defaultGoroutineCancelCh = make(chan int, 1)
-	defaultGoroutineCloseCh  = make(chan int, 1)
+	ErrIndexOutOfBound = errors.New("index_out_of_bound")
+	bgWorkerCloseCh    = make(chan chan int, 1)
 )
 
 func init() {
+	Init(nil)
+	loggerMap["default"] = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
 	go bgWorker()
 }
 
@@ -91,13 +94,12 @@ func bgWorker() {
 	timer := time.NewTicker(1 * time.Second)
 	for {
 		select {
-		case <-defaultGoroutineCancelCh:
-			defaultGoroutineCloseCh <- 1
+		case ch := <-bgWorkerCloseCh:
 			timer.Stop()
+			ch <- 1
 			return
 		case <-timer.C:
 			updateNow()
-			defaultLogger.Flush()
 			for _, log := range loggerMap {
 				log.Flush()
 			}
@@ -107,41 +109,29 @@ func bgWorker() {
 
 // Init 日志库初始化
 func Init(config []LoggerDefine) {
-	defaultGoroutineCancelCh <- 1
-	<-defaultGoroutineCloseCh
+	// 关闭bgWorker
+	ch := make(chan int, 1)
+	bgWorkerCloseCh <- ch
+	<-ch
+
 	if config != nil {
-		var hasdefault = false
 		for _, logger := range config {
 			logger.Name = strings.ToLower(logger.Name)
 			logger.Writer = strings.ToLower(logger.Writer)
-			var log *Logger
-			var ok bool
-			if logger.Name == "default" {
-				if hasdefault {
-					log = defaultLogger
-					ok = true
-				} else {
-					log = nil
-					ok = false
-				}
-			} else {
-				log, ok = loggerMap[logger.Name]
-			}
+			log, ok := loggerMap[logger.Name]
 			if !ok {
 				log = NewLogger(&DefaultFormatter{}, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
+				loggerMap[logger.Name] = log
 			} else {
 				log.writers = append(log.writers, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
-				log.UpdateLevel()
 			}
-			if logger.Name == "default" {
-				defaultLogger = log
-				hasdefault = true
-			} else {
-				loggerMap[logger.Name] = log
-			}
+			log.UpdateLevel()
 		}
+		// 添加默认日志对象
 	}
-	updateNow()
+	if _, ok := loggerMap["default"]; !ok {
+		loggerMap["default"] = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
+	}
 	go bgWorker()
 }
 
@@ -173,7 +163,7 @@ func GetLogger(name string) *Logger {
 	if ok {
 		return logger
 	}
-	return defaultLogger
+	return loggerMap["default"]
 }
 
 func getLevelFromStr(level string) int {
@@ -210,17 +200,13 @@ func getLevelFromStr(level string) int {
 // SetLevel 设置日志级别
 func SetLevel(name string, index int, level string) error {
 	var log *Logger
-	if name == "default" {
-		log = defaultLogger
-	} else {
-		var l *Logger
-		var ok bool
-		if l, ok = loggerMap[name]; !ok {
-			fmt.Printf("ERROR: log name not found: %v\n", name)
-			return ErrNameNotFound
-		}
-		log = l
+	var l *Logger
+	var ok bool
+	if l, ok = loggerMap[name]; !ok {
+		fmt.Printf("ERROR: log name not found: %v\n", name)
+		return ErrNameNotFound
 	}
+	log = l
 	if index >= len(log.writers) {
 		fmt.Printf("ERROR: log index exceed: %v, %v\n", len(log.writers), index)
 		return ErrIndexOutOfBound
@@ -303,27 +289,27 @@ func (log *Logger) Write(level int, format string, a ...interface{}) {
 
 // Debug 输出DEBUG级别日志
 func Debug(format string, a ...interface{}) {
-	defaultLogger.Write(DEBUG, format, a...)
+	loggerMap["default"].Write(DEBUG, format, a...)
 }
 
 // Info 输出INFO级别日志
 func Info(format string, a ...interface{}) {
-	defaultLogger.Write(INFO, format, a...)
+	loggerMap["default"].Write(INFO, format, a...)
 }
 
 // Warn 输出WARN级别日志
 func Warn(format string, a ...interface{}) {
-	defaultLogger.Write(WARN, format, a...)
+	loggerMap["default"].Write(WARN, format, a...)
 }
 
 // Error 输出ERROR级别日志
 func Error(format string, a ...interface{}) {
-	defaultLogger.Write(ERROR, format, a...)
+	loggerMap["default"].Write(ERROR, format, a...)
 }
 
 // Fatal 输出FATAL级别日志
 func Fatal(format string, a ...interface{}) {
-	defaultLogger.Write(FATAL, format, a...)
+	loggerMap["default"].Write(FATAL, format, a...)
 	os.Exit(1)
 }
 
