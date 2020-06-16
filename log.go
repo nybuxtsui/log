@@ -84,9 +84,8 @@ var (
 )
 
 func init() {
-	Init(nil)
-	loggerMap["default"] = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
 	go bgWorker()
+	Init(nil)
 }
 
 func bgWorker() {
@@ -114,21 +113,19 @@ func Init(config []LoggerDefine) {
 	bgWorkerCloseCh <- ch
 	<-ch
 
-	if config != nil {
-		for _, logger := range config {
-			logger.Name = strings.ToLower(logger.Name)
-			logger.Writer = strings.ToLower(logger.Writer)
-			log, ok := loggerMap[logger.Name]
-			if !ok {
-				log = NewLogger(&DefaultFormatter{}, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
-				loggerMap[logger.Name] = log
-			} else {
-				log.writers = append(log.writers, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
-			}
-			log.UpdateLevel()
+	for _, logger := range config {
+		logger.Name = strings.ToLower(logger.Name)
+		logger.Writer = strings.ToLower(logger.Writer)
+		log, ok := loggerMap[logger.Name]
+		if !ok {
+			log = NewLogger(&DefaultFormatter{}, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
+			loggerMap[logger.Name] = log
+		} else {
+			log.writers = append(log.writers, NewWriter(getLevelFromStr(logger.Level), logger.Writer))
 		}
-		// 添加默认日志对象
+		log.UpdateLevel()
 	}
+	// 添加默认日志对象
 	if _, ok := loggerMap["default"]; !ok {
 		loggerMap["default"] = NewLogger(&DefaultFormatter{}, NewWriter(DEBUG, "console"))
 	}
