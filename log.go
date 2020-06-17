@@ -113,6 +113,7 @@ func Init(config []LoggerDefine) {
 	bgWorkerCloseCh <- ch
 	<-ch
 
+	loggerMap = map[string]*Logger{}
 	for _, logger := range config {
 		logger.Name = strings.ToLower(logger.Name)
 		logger.Writer = strings.ToLower(logger.Writer)
